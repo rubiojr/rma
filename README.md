@@ -11,7 +11,7 @@ The Risor Code Assistant is a repository containing tools, examples, and resourc
 
 Code editors like Zed can be given a context file to provide the necessary information for the assistant to understand the problem and generate the appropriate Risor code.
 
-With a prompt like and context.txt:
+With a prompt like this and `context.txt`:
 
 ```
 Wrap github.com/tkrajina/gpxgo in a Risor module.

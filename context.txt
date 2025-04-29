@@ -1,5 +1,616 @@
-context/docs/object-interface.go
+context/context-medium.txt
 ---
+# Risor Language Reference Guide
+
+## Core Syntax
+
+### Variable Declaration
+```risor
+// Use := for variable declaration (not var keyword like in Go)
+x := 10
+y := "hello"
+z := 3.14
+
+// Constants
+const URL = "https://example.com"
+
+// Multiple variables need container initialization
+a, b, c := [1, 2, 3]  // Not a = b = c = value
+```
+
+### Data Types
+```risor
+// Basic types
+num := 42          // int
+price := 19.99     // float
+name := "Alice"    // string
+active := true     // bool
+nothing := nil     // nil
+
+// Container types
+items := [1, 2, 3]           // list
+settings := {theme: "dark"}  // map (keys are always strings)
+uniqueIds := {1, 2, 3}       // set
+```
+
+### String Handling
+```risor
+// Three types of strings:
+standard := "Double quotes: standard strings"
+template := 'Single quotes: support {variable} interpolation'
+multiline := `Backticks: raw strings
+that span multiple
+lines`
+
+name := "world"
+greeting := 'Hello, {name}!'  // "Hello, world!"
+
+// String methods
+"hello".to_upper()            // "HELLO"
+"  text  ".trim_space()       // "text"
+"a,b,c".split(",")            // ["a", "b", "c"]
+",".join(["a", "b", "c"])     // "a,b,c"
+```
+
+### Functions
+```risor
+// Basic function
+func add(a, b) {
+  return a + b
+}
+
+// Function with default parameter
+func greet(name='world') {
+  return 'Hello, {name}!'
+}
+
+// Functions as values
+doubler := func(x) {
+  return x * 2
+}
+
+// Functions can only return a single value
+// Use containers for multiple return values
+func get_user_info() {
+  return {name: "Alice", age: 30}
+}
+
+// Unpacking
+info := get_user_info()
+print(info.name)
+```
+
+### Control Flow
+```risor
+// If-else as expression
+status := if x > 10 {
+  "greater"
+} else if x == 10 {
+  "equal"
+} else {
+  "lesser"
+}
+
+// Switch as expression
+role := switch name {
+  case "admin":
+    "Administrator"
+  case "mod":
+    "Moderator"
+  default:
+    "User"
+}
+
+// Loops
+for i := 0; i < 5; i++ {
+  print(i)
+}
+
+i := 0
+for i < 5 {
+  print(i)
+  i++
+}
+
+list := [1, 2, 3]
+for i, value := range list {
+  print(i, value)
+}
+
+// Ternary expression
+allowed := age >= 18 ? true : false
+```
+
+## Error Handling
+
+```risor
+// Raising errors
+func divide(a, b) {
+  if b == 0 {
+    error("division by zero")
+  }
+  return a / b
+}
+
+// Try function for error handling
+result := try(
+  func() {
+    return divide(10, 0)
+  },
+  "division failed"
+)  // result is "division failed"
+
+// Chaining fallbacks
+result := try(
+  func() { error("first error") },
+  func() { error("second error") },
+  "default value"
+)  // result is "default value"
+
+// Access the error in fallback
+result := try(
+  func() {
+    error("something failed")
+  },
+  func(err) {
+    print("Error caught:", err)
+    return "recovered"
+  }
+)
+```
+
+## Pipe Operator
+
+```risor
+// Pipe operator passes the left value as first argument to the right function
+"hello" | strings.to_upper                 // "HELLO"
+[1, 2, 3] | math.sum                       // 6
+
+// Chain pipes
+"  hello  " | strings.trim_space | strings.to_upper  // "HELLO"
+
+// Process data pipeline style
+fetch("https://api.example.com/users")
+  | .json()
+  | jmespath("[].name")
+```
+
+## Modules and Imports
+
+```risor
+// Import module (no quotes)
+import math
+import time
+
+// Import with alias
+import strings as str
+
+// Import specific attributes
+from os import read_file, write_file
+
+// Using imported modules
+math.sqrt(16)
+str.to_upper("hello")
+```
+
+## Concurrency
+
+```risor
+// Channels
+c := chan(1)    // Buffered channel with capacity 1
+c <- "hello"    // Send value
+x := <-c        // Receive value
+close(c)        // Close channel
+
+// Range over channel (different from Go)
+for i, value := range c {
+  print(i, value)  // i is the index
+}
+
+// Goroutines
+go func() {
+  // Run in background
+  time.sleep(1)
+  print("background task completed")
+}()
+
+// Spawn and wait for result
+result := spawn(func(x) {
+  time.sleep(1)
+  return x * 2
+}, 21).wait()   // result is 42
+```
+
+## Built-ins and Common Modules
+
+### Key Built-ins
+```risor
+print("Output to console")           // Print to stdout
+len([1, 2, 3])                       // Length of container (3)
+assert(x > 0, "must be positive")    // Assertion with message
+type([1, 2])                         // Returns "list"
+keys({a: 1, b: 2})                   // Returns ["a", "b"]
+```
+
+### HTTP Operations
+```risor
+// Simple HTTP request
+response := fetch("https://api.example.com")
+status := response.status_code  // e.g., 200
+data := response.json()         // Parse JSON response
+
+// Request with options
+response := fetch("https://api.example.com", {
+  method: "POST",
+  headers: {"Content-Type": "application/json"},
+  data: {name: "Alice", age: 30}
+})
+```
+
+### File Operations
+```risor
+// Read/write files
+content := os.read_file("config.json")
+os.write_file("output.txt", "Hello, world!")
+
+// Directory operations
+files := os.read_dir("/tmp")
+os.mkdir("new_directory", 0755)
+path := filepath.join("path", "to", "file.txt")
+```
+
+### JSON and YAML
+```risor
+// JSON operations
+json_str := json.marshal({name: "Alice", age: 30})
+obj := json.unmarshal('{"name": "Bob", "age": 25}')
+
+// YAML operations
+yaml_str := yaml.marshal({name: "Alice", age: 30})
+obj := yaml.unmarshal("name: Bob\nage: 25")
+```
+
+### Time and Date
+```risor
+// Time operations
+now := time.now()
+formatted := now.format(time.RFC3339)
+time.sleep(0.5)  // Sleep for 0.5 seconds
+```
+
+## Complete Examples
+
+### HTTP API Client
+```risor
+import os
+
+// Function to fetch user data
+func get_user(id) {
+  response := try(
+    func() {
+      return fetch('https://api.example.com/users/{id}')
+    },
+    func(err) {
+      print("Request failed:", err)
+      return nil
+    }
+  )
+
+  if response == nil {
+    return nil
+  }
+
+  if response.status_code != 200 {
+    print("Error:", response.status_code)
+    return nil
+  }
+
+  return response.json()
+}
+
+// Process and save user data
+user := get_user(42)
+if user != nil {
+  print('Found user: {user.name}')
+  os.write_file("user_data.json", json.marshal(user))
+}
+```
+
+### Concurrent File Processing
+```risor
+import os
+import filepath
+
+func process_file(path) {
+  content := try(
+    func() { return os.read_file(path) },
+    func(err) {
+      print('Error reading {path}:', err)
+      return nil
+    }
+  )
+
+  if content == nil {
+    return nil
+  }
+
+  // Process content (e.g., count lines)
+  lines := strings.split(string(content), "\n")
+  return len(lines)
+}
+
+// Process multiple files concurrently
+files := os.read_dir(".")
+threads := []
+
+for _, file := range files {
+  if filepath.ext(file.name) == ".txt" {
+    threads.append(spawn(process_file, file.name))
+  }
+}
+
+// Collect results
+results := {}
+for i, thread := range threads {
+  path := files[i].name
+  results[path] = thread.wait()
+}
+
+print("Results:", results)
+Remember these rules:
+- Use two spaces to indent code
+- No `var` keyword for variables (use `:=`)
+- No `??` operator for null coalescing (use `coalesce()` function)
+- Module imports don't use quotes: `import math` not `import "math"`
+- Use single quotes for string interpolation: `'Hello, {name}'`
+- If-else and switch are expressions that return values
+- String interpolation with single quotes only supports simple variable substitution (`'{variable}'`). It does not support formatting specifications inside the curly braces like Python's f-strings. To format values, use the `fmt.sprintf()` function separately and concatenate the results
+- ^ is not a valid power operator in Risor. Use math.pow() function instead
+- Use os.stdin.input() to read input from the user
+
+Always follow the above rules.
+# Errors Module Summary
+Errors module provides functions for creating error values in Risor.
+## Functions
+* new(string) - Creates a new error value with the given message
+
+# Exec Module Summary
+Exec module is used to run external commands without invoking the system shell.
+## Functions
+* exec(args, opts) - Runs command and returns result object
+* command(args) - Creates a new command
+* look_path(name) - Searches for executable in PATH
+## Types
+* command - Has path, dir, env, stdout, stderr attributes and run(), output(), combined_output(), start(), wait() methods
+* result - Has stdout, stderr, pid attributes
+
+# Filepath Module Summary
+Filepath module provides utilities to manipulate file paths with OS-specific separators.
+## Functions
+* abs(path) - Returns absolute representation of path
+* base(path) - Returns last element of path
+* clean(path) - Returns shortest path name equivalent
+* dir(path) - Returns all but last element of path
+* ext(path) - Returns file extension
+* is_abs(path) - Checks if path is absolute
+* join(paths...) - Joins path elements with OS-specific separator
+* match(pattern, name) - Checks if filename matches shell pattern
+* rel(basepath, targpath) - Returns relative path from base to target
+* split_list(path) - Splits path into directory and file components as list
+* split(path) - Splits path into directory and file components
+* walk_dir(root, fn) - Walks file tree calling function for each entry
+# HTTP Module Summary
+HTTP module provides functions for making HTTP requests and handling responses.
+## Functions
+* get(url, headers, params) - Creates a GET request
+* delete(url, headers, params) - Creates a DELETE request
+* head(url, headers, params) - Creates a HEAD request
+* listen_and_serve(addr, handler) - Starts an HTTP server
+* listen_and_serve_tls(addr, cert_file, key_file, handler) - Starts an HTTPS server
+* patch(url, headers, body) - Creates a PATCH request
+* post(url, headers, body) - Creates a POST request
+* put(url, headers, body) - Creates a PUT request
+* request(url, options) - Creates a custom HTTP request
+## Types
+* request - Has url, content_length, header attributes and send(), add_header(), add_cookie(), set_body(), set_data() methods
+* response - Has status, status_code, proto, content_length, header, cookies, response attributes and json(), text(), close() methods
+* response_writer - Has add_header(), del_header(), write(), write_header() methods
+# Math Module Summary
+Math module provides constants and mathematical functions, wrapping Go's math package with additional utilities.
+## Constants
+* PI - Mathematical constant pi (3.141592653589793)
+* E - Mathematical constant e (2.718281828459045)
+## Functions
+* abs(x) - Returns absolute value
+* sqrt(x) - Returns square root
+* min(x, y) - Returns smaller of two numbers
+* max(x, y) - Returns larger of two numbers
+* floor(x) - Returns largest integer less than or equal to x
+* ceil(x) - Returns smallest integer greater than or equal to x
+* sin(x) - Returns sine
+* cos(x) - Returns cosine
+* tan(x) - Returns tangent
+* mod(x, y) - Returns remainder of division
+* log(x) - Returns natural logarithm
+* log10(x) - Returns base-10 logarithm
+* log2(x) - Returns base-2 logarithm
+* pow(x, y) - Returns x raised to power of y
+* pow10(x) - Returns 10 raised to power of x
+* is_inf(x) - Checks if value is infinity
+* inf() - Returns infinite value
+* round(x) - Rounds to nearest integer
+* sum(list) - Returns sum of all numbers in list
+# OS Module Summary
+OS module provides platform-independent access to operating system functionality.
+## Attributes
+* stdin - Standard input file pointer
+* stdout - Standard output file pointer
+## Functions
+* chdir(dir) - Changes working directory
+* create(name) - Creates or truncates a file
+* environ() - Returns environment variables as list of strings
+* exit(code) - Terminates program with exit code
+* getenv(key) - Gets environment variable value
+* getpid() - Returns current process ID
+* getuid() - Returns current user ID
+* getwd() - Gets current working directory
+* hostname() - Returns system hostname
+* mkdir_all(path, perm) - Creates directory with parents
+* mkdir_temp(dir, prefix) - Creates temporary directory
+* mkdir(path, perm) - Creates directory
+* open(name) - Opens file for reading
+* read_dir(name) - Lists directory contents
+* read_file(name) - Reads file contents
+* remove(name) - Removes file or empty directory
+* remove_all(name) - Removes directory and contents
+* rename(old, new) - Renames/moves file or directory
+* setenv(key, value) - Sets environment variable
+* stat(name) - Returns file information
+* symlink(old, new) - Creates symbolic link
+* temp_dir() - Returns temporary directory path
+* unsetenv(key) - Unsets environment variable
+* user_cache_dir() - Returns user cache directory
+* user_config_dir() - Returns user config directory
+* user_home_dir() - Returns user home directory
+* write_file(name, data) - Writes data to file
+## Types
+* File - Has read(), write(), close() methods
+* FileInfo - Contains name, mode, size, mod_time attributes
+* DirEntry - Contains name, type attributes
+# regexp Module Summary
+The regexp module provides regular expression matching functionality using Go's regexp syntax.
+## Functions
+- `compile(expr string)` - Compiles a regular expression string
+- `match(expr, s string)` - Tests if a string contains a pattern match
+## Types
+- `regexp` - Represents a compiled regular expression
+- `match(s string)` - Tests if string contains pattern match
+- `find(s string)` - Returns leftmost match
+- `find_all(s string)` - Returns all matches
+- `find_submatch(s string)` - Returns matches and submatches
+- `replace_all(s, repl string)` - Replaces all matches with replacement
+- `split(s string)` - Splits string by pattern matches
+# Strings Module Summary
+String manipulation functions from the Go standard library.
+## Functions
+* compare(s1, s2) - Compares strings lexicographically
+* contains(s, substr) - Checks if string contains substring
+* count(s, substr) - Counts non-overlapping instances of substring
+* fields(s) - Splits string on whitespace
+* has_prefix(s, prefix) - Checks if string starts with prefix
+* has_suffix(s, suffix) - Checks if string ends with suffix
+* index(s, substr) - Returns first index of substring or -1
+* join(a, sep) - Concatenates strings with separator
+* last_index(s, substr) - Returns last index of substring or -1
+* repeat(s, count) - Creates new string with repeated copies
+* replace_all(s, old, new) - Replaces all instances of old with new
+* split(s, sep) - Splits string on separator
+* to_lower(s) - Converts string to lowercase
+* to_upper(s) - Converts string to uppercase
+* trim_prefix(s, prefix) - Removes leading prefix if present
+* trim_space(s) - Removes leading and trailing whitespace
+* trim_suffix(s, suffix) - Removes trailing suffix if present
+* trim(s, cutset) - Removes leading and trailing characters in cutset
+# Time Module Summary
+Time module provides functionality for measuring and displaying time.
+## Constants
+* ANSIC, UnixDate, RubyDate, RFC822, RFC822Z, RFC850, RFC1123, RFC1123Z, RFC3339, RFC3339Nano, Kitchen, Stamp, StampMilli, StampMicro, StampNano - Predefined date/time formats
+## Functions
+* now() - Returns current time
+* unix(sec, nsec) - Returns time from Unix timestamp
+* parse(layout, value) - Parses string into time object
+* since(t) - Returns seconds elapsed since given time
+* sleep(duration) - Pauses execution for specified seconds
+## Types
+* time - Has before(t), after(t), format(layout), utc(), unix() methods
+
+
+---
+context/docs/object.go
+---
+// Package object provides the standard set of Risor object types.
+//
+// For external users of Risor, often an object.Object interface
+// will be type asserted to a specific object type, such as *object.Float.
+//
+// For example:
+//
+//	switch obj := obj.(type) {
+//	case *object.String:
+//		// do something with obj.Value()
+//	case *object.Float:
+//		// do something with obj.Value()
+//	}
+//
+// The Type() method of each object may also be used to get a string
+// name of the object type, such as "string" or "float".
+package object
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"time"
+
+	"github.com/risor-io/risor/errz"
+	"github.com/risor-io/risor/op"
+)
+
+// Type of an object as a string.
+type Type string
+
+// Type constants
+const (
+	BOOL          Type = "bool"
+	BUFFER        Type = "buffer"
+	BUILTIN       Type = "builtin"
+	BYTE          Type = "byte"
+	BYTE_SLICE    Type = "byte_slice"
+	CELL          Type = "cell"
+	CHANNEL       Type = "channel"
+	COLOR         Type = "color"
+	COMPLEX       Type = "complex"
+	COMPLEX_SLICE Type = "complex_slice"
+	DIR_ENTRY     Type = "dir_entry"
+	DYNAMIC_ATTR  Type = "dynamic_attr"
+	ERROR         Type = "error"
+	FILE          Type = "file"
+	FILE_INFO     Type = "file_info"
+	FILE_ITER     Type = "file_iter"
+	FILE_MODE     Type = "file_mode"
+	FLOAT         Type = "float"
+	FLOAT_SLICE   Type = "float_slice"
+	FUNCTION      Type = "function"
+	GO_FIELD      Type = "go_field"
+	GO_METHOD     Type = "go_method"
+	GO_TYPE       Type = "go_type"
+	INT           Type = "int"
+	INT_ITER      Type = "int_iter"
+	ITER_ENTRY    Type = "iter_entry"
+	LIST          Type = "list"
+	LIST_ITER     Type = "list_iter"
+	MAP           Type = "map"
+	MAP_ITER      Type = "map_iter"
+	MODULE        Type = "module"
+	NIL           Type = "nil"
+	PARTIAL       Type = "partial"
+	PROXY         Type = "proxy"
+	RESULT        Type = "result"
+	SET           Type = "set"
+	SET_ITER      Type = "set_iter"
+	SLICE_ITER    Type = "slice_iter"
+	STRING        Type = "string"
+	STRING_ITER   Type = "string_iter"
+	THREAD        Type = "thread"
+	TIME          Type = "time"
+)
+
+var (
+	Nil   = &NilType{}
+	True  = &Bool{value: true}
+	False = &Bool{value: false}
+)
+
 // Object is the interface that all object types in Risor must implement.
 type Object interface {
 	// Type of the object.
@@ -31,434 +642,429 @@ type Object interface {
 	Cost() int
 }
 
+// Slice is used to specify a range or slice of items in a container.
+type Slice struct {
+	Start Object
+	Stop  Object
+}
+
+// IteratorEntry is a single item returned by an iterator.
+type IteratorEntry interface {
+	Object
+	Key() Object
+	Value() Object
+	Primary() Object
+}
+
+// Iterator is an interface used to iterate over a container.
+type Iterator interface {
+	Object
+
+	// Next advances the iterator and then returns the current object and a
+	// bool indicating whether the returned item is valid. Once Next() has been
+	// called, the Entry() method can be used to get an IteratorEntry.
+	Next(context.Context) (Object, bool)
+
+	// Entry returns the current entry in the iterator and a bool indicating
+	// whether the returned item is valid.
+	Entry() (IteratorEntry, bool)
+}
+
+// Iterable is an interface that exposes an iterator for an Object.
+type Iterable interface {
+	Iter() Iterator
+}
+
+type Container interface {
+	Iterable
+
+	// GetItem implements the [key] operator for a container type.
+	GetItem(key Object) (Object, *Error)
+
+	// GetSlice implements the [start:stop] operator for a container type.
+	GetSlice(s Slice) (Object, *Error)
+
+	// SetItem implements the [key] = value operator for a container type.
+	SetItem(key, value Object) *Error
+
+	// DelItem implements the del [key] operator for a container type.
+	DelItem(key Object) *Error
+
+	// Contains returns true if the given item is found in this container.
+	Contains(item Object) *Bool
+
+	// Len returns the number of items in this container.
+	Len() *Int
+}
+
+// Callable is an interface that exposes a Call method.
+type Callable interface {
+	// Call invokes the callable with the given arguments and returns the result.
+	Call(ctx context.Context, args ...Object) Object
+}
+
+// Hashable types can be hashed and consequently used in a set.
+type Hashable interface {
+	// Hash returns a hash key for the given object.
+	HashKey() HashKey
+}
+
+// Comparable is an interface used to compare two objects.
+//
+//	-1 if this < other
+//	 0 if this == other
+//	 1 if this > other
+type Comparable interface {
+	Compare(other Object) (int, error)
+}
+
+func CompareTypes(a, b Object) int {
+	aType := a.Type()
+	bType := b.Type()
+	if aType != bType {
+		if aType < bType {
+			return -1
+		}
+		return 1
+	}
+	return 0
+}
+
+// HashKey is used to identify unique values in a set.
+type HashKey struct {
+	// Type of the object being referenced.
+	Type Type
+	// FltValue is used as the key for floats.
+	FltValue float64
+	// IntValue is used as the key for integers.
+	IntValue int64
+	// StrValue is used as the key for strings.
+	StrValue string
+}
+
+// AttrResolver is an interface used to resolve dynamic attributes on an object.
+type AttrResolver interface {
+	ResolveAttr(ctx context.Context, name string) (Object, error)
+}
+
+type ResolveAttrFunc func(ctx context.Context, name string) (Object, error)
+
+// Keys returns the keys of an object map as a sorted slice of strings.
+func Keys(m map[string]Object) []string {
+	var names []string
+	for k := range m {
+		names = append(names, k)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// PrintableValue returns a value that should be used when printing an object.
+func PrintableValue(obj Object) interface{} {
+	switch obj := obj.(type) {
+	// Primitive types have their underlying Go value passed to fmt.Printf
+	// so that Go's Printf-style formatting directives work as expected. Also,
+	// with these types there's no good reason for the print format to differ.
+	case *String,
+		*Int,
+		*Float,
+		*Byte,
+		*Error,
+		*Bool:
+		return obj.Interface()
+	// For time objects, as a personal preference, I'm using RFC3339 format
+	// rather than Go's default time print format, which I find less readable.
+	case *Time:
+		return obj.Value().Format(time.RFC3339)
+	}
+	// For everything else, convert the object to a string directly, relying
+	// on the object type's String() or Inspect() methods. This gives the author
+	// of new types the ability to customize the object print string. Note that
+	// Risor map and list objects fall into this category on purpose and the
+	// print format for these is intentionally a bit different than the print
+	// format for the equivalent Go type (maps and slices).
+	switch obj := obj.(type) {
+	case fmt.Stringer:
+		return obj.String()
+	default:
+		return obj.Inspect()
+	}
+}
+
+// EvalErrorf returns a Risor Error object containing an eval error.
+func EvalErrorf(format string, args ...interface{}) *Error {
+	return NewError(errz.EvalErrorf(format, args...))
+}
+
+// ArgsErrorf returns a Risor Error object containing an arguments error.
+func ArgsErrorf(format string, args ...interface{}) *Error {
+	return NewError(errz.ArgsErrorf(format, args...))
+}
+
+// TypeErrorf returns a Risor Error object containing a type error.
+func TypeErrorf(format string, args ...interface{}) *Error {
+	return NewError(errz.TypeErrorf(format, args...))
+}
+
 
 ---
-context/docs/syntax.mdx
+context/docs/op.go
 ---
-# Syntax
-
-The overall idea for Risor syntax is that it is like Go, but aims to be more
-concise and expressive for scripting. Variables are dynamically typed and all
-Risor object types implement an `object.Object` interface defined in Go.
-
-### Variable Declarations
-
-Variables are declared using the := operator. Unlike in Go, all variables
-are dynamically typed.
-
-```risor copy
-// Declare a variable `x` and assign the integer value 10
-x := 10
-
-// Declare a variable `y` and assign the string value "hello"
-y := "hello"
-
-// Declare a variable `array` and assign an array of integers
-array := [1, 2, 3]
-```
-
-Constant declarations are also supported:
-
-```risor copy
-const url = "https://example.com"
-```
-
-### Variable Assignment
-
-Existing variables can be set using the = operator:
-
-```risor copy
-// Declare `x`
-x := 10
-
-// Update `x` to 20
-x = 20
-```
-
-### Functions
-
-Functions in Risor are declared using the `func` keyword. Type declarations are
-not supported.
-
-```risor copy
-func last(data) {
-    if len(data) == 0 {
-        return nil
-    }
-    return data[-1]
-}
-```
-
-Default parameter values are supported, with allowed types including strings,
-integers, floats, and booleans:
-
-```risor copy
-func greet(name='world') {
-    return 'Hello, ' + name
-}
-```
-
-Unlike in Go, functions can only return a single value. You can, however, return
-a list and unpack it:
-
-```risor copy
-func swap(a, b) {
-    return [b, a]
-}
-
-x, y := swap(10, 20)
-print(x, y)  // 20 10
-```
-
-Functions may be assigned to a variable and passed as values:
-
-```risor copy
-add := func(a, b) {
-    return a + b
-}
-
-result := add(10, 20) // 30
-```
-
-### Control Flow
-
-Risor supports most forms of control flow present in Go.
-
-```risor copy
-x := 10
-threshold := 5
-if x > threshold {
-    print("greater")
-} else if x == threshold {
-    print("equal")
-} else {
-    print("lesser")
-}
-```
-
-One difference with Risor is that if-else and switch are expressions in Risor,
-meaning they evaluate to a value.
-
-```risor copy
-x := if 10 > 5 {
-    "greater"
-} else {
-    "lesser"
-}
-
-print(x)  # "greater"
-```
-
-```risor copy
-name := "Alice"
-x := switch name {
-    case "Joe":
-        "Hello, Joe"
-    default:
-        "Hello, stranger"
-}
-print(x)  # "Hello, Joe"
-```
-
-Ternary expressions are supported:
-
-```risor copy
-x := 10 > 5 ? 1 : 0
-print(x) // 1
-```
-
-### Loops
-
-Risor supports for loops and range loops in the same way as Go.
-
-```risor copy
-for i := 0; i < 5; i++ {
-    print(i)
-}
-```
-
-```risor copy
-i := 0
-for i < 5 {
-    print(i)
-    i++
-}
-```
-
-```risor copy
-array := [1, 2, 3]
-for i, value := range array {
-    print(i, value)
-}
-```
-
-```risor copy
-for {
-    print("infinite loop")
-    time.sleep(1)
-}
-```
-
-`break` and `continue` keywords are also supported.
-
-```risor copy
-for i := 0; i < 10; i++ {
-    if i == 5 {
-        break
-    }
-    print(i)
-}
-```
-
-```risor copy
-for i := 0; i < 10; i++ {
-    if i == 5 {
-        continue
-    }
-    print(i)
-}
-```
-
-### Errors
-
-Risor errors are similar to exceptions in languages like Python and Javascript.
-This makes Risor more concise and suitable for scripts, as compared to Go. A
-built-in `try` function is provided to attempt an operation and fallback to a
-default value if it fails. `try` accepts any number of functions, and the first
-one that does not raise an error has its result returned. If a non-function value
-is reached, it is returned immediately.
-
-```risor copy
-result := try(func() { error("kaboom") }, "default value")
-print(result)  # "default value"
-```
-
-Errors can be raised using the `error` function:
-
-```risor copy
-func divide(a, b) {
-    if b == 0 {
-        error("bad idea: division by zero")
-    }
-    return a / b
-}
-```
-
-Also see the [Try-Catch Error Handling](syntax#try-catch-error-handling) section
-for more information.
-
-### Pipe Expressions
-
-Risor supports pipe expressions, which allow you to chain function calls
-together. The pipe operator `|` takes the result of the expression on its left
-and passes it as the first argument to the function on its right.
-
-```risor copy
-result := "hello" | strings.to_upper
-print(result)  # "HELLO"
-```
-
-### Importing Modules
-
-Modules are imported using the `import` keyword.
-
-```risor copy
-import mymod
-
-import mymod as mod
-```
-
-By default the Risor CLI will look for modules as `.risor` files in the
-current working directory.
-
-You can also import specific attributes from a module using the `from` keyword.
-
-```risor copy
-from mymod import myfunc
-
-from mymod import myfunc as f
-```
-
-### Strings
-
-Simple strings are declared using double quotes, as in Go:
-
-```risor copy
-s := "hello"
-```
-
-Multiline, raw strings are also supported using backticks:
-
-```risor copy
-s := `
-"one"
-"two"
-`
-```
-
-Templated strings are defined using single quotes, and variables are interpolated
-between curly braces:
-
-```risor copy
-name := "Joe"
-s := 'Hello, {name}'
-```
-
-### Data Structures
-
-Risor supports lists, maps, and sets.
-
-```risor copy
-// Values contained in data structures can hold mixed types
-mylist := [1, "two", 3.0]
-
-// Map keys are always strings
-mymap := {
-    "one": 1,
-    "two": 2,
-    "three": 3,
-}
-
-othermap := {
-    foo: "bar" // keys can be unquoted if they are valid identifiers
-}
-
-myset := {1, 2, 3}
-```
-
-Membership tests are performed using the `in` operator:
-
-```risor copy
-mylist := [1, 2, 3]
-print(1 in mylist)  // true
-```
-
-### Comments
-
-Single-line comments are defined using `//` or `#`, and multiline comments are
-defined using `/*` and `*/`.
-
-```risor copy
-// This is a single-line comment
-
-# This is also a single-line comment
-
-/* 
-This is a multiline comment
-*/
-```
-
-### Channels
-
-Risor supports Go-style channels for concurrent communication:
-
-```risor copy
-// Create a buffered channel with capacity 1
-c := chan(1)
-
-// Send a value to the channel
-c <- "hello"
-
-// Receive a value from the channel
-x := <-c
-
-// Close a channel
-close(c)
-```
-
-Risor channels behave like Go channels in many ways, however they support sending
-and receiving any Risor object type. Also when ranging over a channel, in Risor
-you receive both the index and value of the current item.
-
-```risor copy
-func work(count) {
-    mychan := chan(5)
-    go func() {
-        for i := 0; i < count; i++ {
-            mychan <- rand.float()
-        }
-        close(mychan)
-    }()
-    return mychan
-}
-
-// Different from Go: ranging over a channel yields both the index and value
-for i, value := range work(5) {
-    print(i, value)
-}
-```
-
-### Goroutines
-
-Risor supports launching goroutines using the `go` keyword:
-
-```risor copy
-// Launch a goroutine
-go func() {
-    // Do some work
-}()
-
-// Use a channel for communication
-c := chan(1)
-go func() {
-    c <- 42
-}()
-x := <-c
-```
-
-### Spawn
-
-The `spawn` function spawns a new goroutine and returns a `thread` object. The
-thread object can be used to wait for the goroutine to finish and retrieve its
-return value.
-
-```risor copy
-// Spawn a function and wait for its result
-result := spawn(func(x) { return x * 2 }, 21).wait()
-print(result)  // 42
-
-// Spawn multiple functions
-threads := []
-for i := 0; i < 5; i++ {
-    threads.append(spawn(func(x) { return x ** 2 }, i))
-}
-results := threads.map(func(t) { t.wait() })
-print(results)  // [0, 1, 4, 9, 16]
-```
-
-### Defer
-
-The `defer` statement allows you to schedule a function call to be run after the
-current function completes:
-
-```risor copy
-func example() {
-    defer print("This will be printed last")
-    print("This will be printed first")
-}
-
-example()
-```
-
-### Try-Catch Error Handling
-
-Risor provides a `try` function for error handling:
-
-```risor copy
-result := try(
-    func() {
-        // Code that might raise an error
-        error("Something went wrong")
-    },
-    func(err) {
-        // Error handler
-        print("Caught error:", err)
-        return "fallback value"
-    }
+// Package op defines opcodes used by the Risor compiler and virtual machine.
+package op
+
+// Code is an integer opcode that indicates an operation to execute.
+type Code uint16
+
+const (
+	Invalid Code = 0
+
+	// Execution
+	Nop         Code = 1
+	Halt        Code = 2
+	Call        Code = 3
+	ReturnValue Code = 4
+	Defer       Code = 5
+	Go          Code = 6
+
+	// Jump
+	JumpBackward          Code = 10
+	JumpForward           Code = 11
+	PopJumpForwardIfFalse Code = 12
+	PopJumpForwardIfTrue  Code = 13
+
+	// Load
+	LoadAttr   Code = 20
+	LoadFast   Code = 21
+	LoadFree   Code = 22
+	LoadGlobal Code = 23
+	LoadConst  Code = 24
+
+	// Store
+	StoreAttr   Code = 30
+	StoreFast   Code = 31
+	StoreFree   Code = 32
+	StoreGlobal Code = 33
+
+	// Operations
+	BinaryOp      Code = 40
+	CompareOp     Code = 41
+	UnaryNegative Code = 42
+	UnaryNot      Code = 43
+
+	// Build
+	BuildList   Code = 50
+	BuildMap    Code = 51
+	BuildSet    Code = 52
+	BuildString Code = 53
+
+	// Containers
+	BinarySubscr Code = 60
+	StoreSubscr  Code = 61
+	ContainsOp   Code = 62
+	Length       Code = 63
+	Slice        Code = 64
+	Unpack       Code = 65
+
+	// Stack
+	Swap   Code = 70
+	Copy   Code = 71
+	PopTop Code = 72
+
+	// Push constants
+	Nil   Code = 80
+	False Code = 81
+	True  Code = 82
+
+	// Iteration
+	ForIter Code = 90
+	GetIter Code = 91
+	Range   Code = 92
+
+	// Import
+	FromImport Code = 100
+	Import     Code = 101
+
+	// Channels
+	Receive Code = 110
+	Send    Code = 111
+
+	// Closures
+	LoadClosure Code = 120
+	MakeCell    Code = 121
+
+	// Partials
+	Partial Code = 130
 )
-```
 
-See the [try](builtins#try) built-in for more information.
+// BinaryOpType describes a type of binary operation, as in an operation that
+// takes two operands. For example, addition, subtraction, multiplication, etc.
+type BinaryOpType uint16
+
+const (
+	Add        BinaryOpType = 1
+	Subtract   BinaryOpType = 2
+	Multiply   BinaryOpType = 3
+	Divide     BinaryOpType = 4
+	Modulo     BinaryOpType = 5
+	And        BinaryOpType = 6
+	Or         BinaryOpType = 7
+	Xor        BinaryOpType = 8
+	Power      BinaryOpType = 9
+	LShift     BinaryOpType = 10
+	RShift     BinaryOpType = 11
+	BitwiseAnd BinaryOpType = 12
+	BitwiseOr  BinaryOpType = 13
+)
+
+// String returns a string representation of the binary operation.
+// For example "+" for addition.
+func (bop BinaryOpType) String() string {
+	switch bop {
+	case Add:
+		return "+"
+	case Subtract:
+		return "-"
+	case Multiply:
+		return "*"
+	case Divide:
+		return "/"
+	case Modulo:
+		return "%"
+	case And:
+		return "&&"
+	case Or:
+		return "||"
+	case Xor:
+		return "^"
+	case Power:
+		return "**"
+	case LShift:
+		return "<<"
+	case RShift:
+		return ">>"
+	case BitwiseAnd:
+		return "&^"
+	case BitwiseOr:
+		return "|^"
+	default:
+		return ""
+	}
+}
+
+// CompareOpType describes a type of comparison operation. For example, less
+// than, greater than, equal, etc.
+type CompareOpType uint16
+
+const (
+	LessThan           CompareOpType = 1
+	LessThanOrEqual    CompareOpType = 2
+	Equal              CompareOpType = 3
+	NotEqual           CompareOpType = 4
+	GreaterThan        CompareOpType = 5
+	GreaterThanOrEqual CompareOpType = 6
+)
+
+// String returns a string representation of the comparison operation.
+// For example "<" for less than.
+func (cop CompareOpType) String() string {
+	switch cop {
+	case LessThan:
+		return "<"
+	case LessThanOrEqual:
+		return "<="
+	case Equal:
+		return "=="
+	case NotEqual:
+		return "!="
+	case GreaterThan:
+		return ">"
+	case GreaterThanOrEqual:
+		return ">="
+	default:
+		return ""
+	}
+}
+
+// Info contains information about an opcode.
+type Info struct {
+	Code         Code
+	Name         string
+	OperandCount int
+}
+
+var infos = make([]Info, 256)
+
+func init() {
+	type opInfo struct {
+		op    Code
+		name  string
+		count int
+	}
+	ops := []opInfo{
+		{BinaryOp, "BINARY_OP", 1},
+		{BinarySubscr, "BINARY_SUBSCR", 0},
+		{BuildList, "BUILD_LIST", 1},
+		{BuildMap, "BUILD_MAP", 1},
+		{BuildSet, "BUILD_SET", 1},
+		{BuildString, "BUILD_STRING", 1},
+		{Call, "CALL", 1},
+		{CompareOp, "COMPARE_OP", 1},
+		{ContainsOp, "CONTAINS_OP", 1},
+		{Copy, "COPY", 1},
+		{Defer, "DEFER", 0},
+		{False, "FALSE", 0},
+		{ForIter, "FOR_ITER", 2},
+		{FromImport, "FROM_IMPORT", 2},
+		{GetIter, "GET_ITER", 0},
+		{Go, "GO", 0},
+		{Halt, "HALT", 0},
+		{Import, "IMPORT", 0},
+		{JumpBackward, "JUMP_BACKWARD", 1},
+		{JumpForward, "JUMP_FORWARD", 1},
+		{Length, "LENGTH", 0},
+		{LoadAttr, "LOAD_ATTR", 1},
+		{LoadClosure, "LOAD_CLOSURE", 2},
+		{LoadConst, "LOAD_CONST", 1},
+		{LoadFast, "LOAD_FAST", 1},
+		{LoadFree, "LOAD_FREE", 1},
+		{LoadGlobal, "LOAD_GLOBAL", 1},
+		{MakeCell, "MAKE_CELL", 2},
+		{Nil, "NIL", 0},
+		{Nop, "NOP", 0},
+		{Partial, "PARTIAL", 1},
+		{PopJumpForwardIfFalse, "POP_JUMP_FORWARD_IF_FALSE", 1},
+		{PopJumpForwardIfTrue, "POP_JUMP_FORWARD_IF_TRUE", 1},
+		{PopTop, "POP_TOP", 0},
+		{Range, "RANGE", 0},
+		{Receive, "RECEIVE", 0},
+		{ReturnValue, "RETURN_VALUE", 0},
+		{Send, "SEND", 0},
+		{Slice, "SLICE", 0},
+		{StoreAttr, "STORE_ATTR", 1},
+		{StoreFast, "STORE_FAST", 1},
+		{StoreFree, "STORE_FREE", 1},
+		{StoreGlobal, "STORE_GLOBAL", 1},
+		{StoreSubscr, "STORE_SUBSCR", 0},
+		{Swap, "SWAP", 1},
+		{True, "TRUE", 0},
+		{UnaryNegative, "UNARY_NEGATIVE", 0},
+		{UnaryNot, "UNARY_NOT", 0},
+		{Unpack, "UNPACK", 1},
+	}
+	for _, o := range ops {
+		infos[o.op] = Info{
+			Name:         o.name,
+			Code:         o.op,
+			OperandCount: o.count,
+		}
+	}
+}
+
+// GetInfo returns information about the given opcode.
+func GetInfo(op Code) Info {
+	return infos[op]
+}
 
 
 ---
@@ -4426,533 +5032,6 @@ func TestNewCronTrigger(t *testing.T) {
 
 
 ---
-context/examples/sched-module/go.mod
----
-module github.com/risor-io/risor/modules/sched
-
-go 1.23.0
-
-replace github.com/risor-io/risor => ../..
-
-require (
-	codnect.io/chrono v1.1.3
-	github.com/risor-io/risor v1.7.0
-	github.com/stretchr/testify v1.10.0
-)
-
-require (
-	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/kr/text v0.2.0 // indirect
-	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-
----
-context/examples/sched-module/go.sum
----
-codnect.io/chrono v1.1.3 h1:24PYU38bQ14hGUBOclYOkTrrSGPaQLEXFoC9etgm6mU=
-codnect.io/chrono v1.1.3/go.mod h1:zmwApcg24IP3E9fgdiupopV1L/QOOtXsqtvivDDaKfk=
-github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
-github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
-github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
-github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
-github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
-github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
-github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
-github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
-github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
-github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
-github.com/stretchr/objx v0.5.2 h1:xuMeJ0Sdp5ZMRXx/aWO6RZxdr3beISkG5/G/aIRr3pY=
-github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
-github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
-github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
-github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
-gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
-gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
-gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
-gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-
-
----
-context/examples/sched-module/sched.go
----
-package sched
-
-import (
-	"context"
-	"sync"
-	"time"
-
-	"codnect.io/chrono"
-	"github.com/risor-io/risor/object"
-)
-
-var (
-	// Global scheduler instance
-	scheduler     chrono.TaskScheduler
-	schedulerOnce sync.Once
-	schedulerMu   sync.Mutex
-)
-
-// getScheduler returns the singleton task scheduler instance.
-// It lazily initializes the scheduler on first use.
-func getScheduler() chrono.TaskScheduler {
-	schedulerOnce.Do(func() {
-		scheduler = chrono.NewDefaultTaskScheduler()
-	})
-	return scheduler
-}
-
-// Module returns the sched module.
-func Module() *object.Module {
-	return object.NewBuiltinsModule(
-		"sched", map[string]object.Object{
-			"cron":  object.NewBuiltin("sched.cron", Cron),
-			"every": object.NewBuiltin("sched.every", Every),
-			"once":  object.NewBuiltin("sched.once", Once),
-		},
-	)
-}
-
-// Cron schedules a function to run at a specific time using a cron like expression.
-//
-// The first argument is the cron expression.
-// The second argument is the function to be scheduled.
-func Cron(ctx context.Context, args ...object.Object) object.Object {
-	if len(args) != 2 {
-		return object.Errorf("missing arguments, 2 required")
-	}
-
-	cronLine, err := object.AsString(args[0])
-	if err != nil {
-		return err
-	}
-
-	fn, ok := args[1].(*object.Function)
-	if !ok {
-		return object.Errorf("expected function, got %s", args[1].Type())
-	}
-
-	// GetCloneCallFunc returns a function safe to be called from a different goroutine.
-	cfunc, ok := object.GetCloneCallFunc(ctx)
-	if !ok {
-		return object.EvalErrorf("eval error: context did not contain a call function")
-	}
-
-	schedulerMu.Lock()
-	defer schedulerMu.Unlock()
-
-	taskScheduler := getScheduler()
-	t, nerr := taskScheduler.ScheduleWithCron(func(context.Context) {
-		_, _ = cfunc(ctx, fn, nil)
-	}, cronLine)
-	if nerr != nil {
-		return object.NewError(nerr)
-	}
-
-	return &task{t: t}
-}
-
-// Every schedules a function to run every n seconds.
-//
-// The first argument is the interval in seconds (float).
-// The second argument is the function to be scheduled.
-func Every(ctx context.Context, args ...object.Object) object.Object {
-	if len(args) != 2 {
-		return object.Errorf("missing arguments, 2 required")
-	}
-
-	dur, err := object.AsString(args[0])
-	if err != nil {
-		return err
-	}
-
-	fn, ok := args[1].(*object.Function)
-	if !ok {
-		return object.Errorf("expected function, got %s", args[1].Type())
-	}
-
-	// GetCloneCallFunc returns a function safe to be called from a different goroutine.
-	cfunc, ok := object.GetCloneCallFunc(ctx)
-	if !ok {
-		return object.EvalErrorf("eval error: context did not contain a call function")
-	}
-
-	duration, nerr := time.ParseDuration(dur)
-	if nerr != nil {
-		return object.NewError(nerr)
-	}
-
-	schedulerMu.Lock()
-	defer schedulerMu.Unlock()
-
-	taskScheduler := getScheduler()
-	t, nerr := taskScheduler.ScheduleAtFixedRate(func(context.Context) {
-		_, _ = cfunc(ctx, fn, nil)
-	}, duration)
-	if nerr != nil {
-		return object.NewError(err)
-	}
-
-	return &task{t: t}
-}
-
-// Once schedules a function to run once.
-//
-// The first argument is the interval in seconds (float).
-// The second argument is the function to be scheduled.
-func Once(ctx context.Context, args ...object.Object) object.Object {
-	if len(args) != 2 {
-		return object.Errorf("missing arguments, 2 required")
-	}
-
-	dur, err := object.AsString(args[0])
-	if err != nil {
-		return err
-	}
-
-	duration, nerr := time.ParseDuration(dur)
-	if nerr != nil {
-		return object.NewError(nerr)
-	}
-
-	start := time.Now().Add(duration)
-
-	fn, ok := args[1].(*object.Function)
-	if !ok {
-		return object.Errorf("expected function, got %s", args[1].Type())
-	}
-
-	// GetCloneCallFunc returns a function safe to be called from a different goroutine.
-	cfunc, ok := object.GetCloneCallFunc(ctx)
-	if !ok {
-		return object.EvalErrorf("eval error: context did not contain a call function")
-	}
-
-	schedulerMu.Lock()
-	defer schedulerMu.Unlock()
-
-	taskScheduler := getScheduler()
-	t, nerr := taskScheduler.Schedule(func(ctx context.Context) {
-		_, _ = cfunc(ctx, fn, nil)
-	}, chrono.WithTime(start))
-	if nerr != nil {
-		return object.NewError(err)
-	}
-
-	return &task{t: t}
-}
-
-
----
-context/examples/sched-module/sched.md
----
-# sched
-
-The `sched` module exposes a simple interface to schedule tasks, powered by [chrono](https://github.com/codnect/chrono).
-
-```go
-once := sched.once("1s", func(){
-    print("once")
-})
-
-cron := sched.cron("*/1 * * * * *", func(){
-    print("hola")
-})
-
-print(cron.is_running())
-
-every := sched.every("1m", func() {
-    print("every 1 minute")
-})
-
-for {
-    time.sleep(1)
-}
-```
-
-## Functions
-
-Functions are non-blocking and return a `task` object.
-
-### cron
-
-```go filename="Function signature"
-cron(cronline string, fn func)
-```
-
-Creates a new cron job.
-
-The `cronline` string is a space-separated list of 6 fields, representing the time to run the task.
-
-```
-SECOND MINUTE HOUR DAY MONTH DAYOFWEEK
-   *      *     *   *    *      *
-```
-
-Some examples:
-
-- `* * * * * *` every second
-- `*/5 * * * * *` every 5 seconds
-- `0 * * * * *` every minute
-- `0 0 * * * *` every hour
-- `20 45 18 5-20/3 * *` every day at 18:45:20, from the 5th to the 20th of the month, every 3 days
-- `0 0 0 1 SEP *` every year on September 1st at midnight
-- `0 0 0 1 5 SUN` every year on the first Sunday of May at midnight
-
-
-```go copy filename="Example"
-// Run every second
-task := sched.cron("*/1 * * * * *", func() {
-	print("hello world!")
-})
-```
-
-Functions run in a separate goroutine, and errors are ignored, so the main program can continue to run. Make sure to handle errors in your function.
-
-### every
-
-```go filename="Function signature"
-every(duration string, fn func)
-```
-
-Creates a new task that runs regularly, at the specified duration.
-
-The string format is documented in [the standard Go library](https://pkg.go.dev/time#ParseDuration).
-
-```go copy filename="Example"
-// Run every minute
-task := sched.every("1m"", func() {
-	print("hello world!")
-})
-```
-
-### once
-
-```go filename="Function signature"
-once(duration string, fn func)
-```
-
-Creates a new task that runs once, after the specified duration.
-
-```go copy filename="Example"
-// Run a task in one 1h, once
-task := sched.once("1h", func() {
-	print("hello world!")
-})
-```
-
-`cron` can be used to run a task once at a specific time, if more control is needed.
-
-## Types
-
-### task
-
-A Task object returned by `cron`, `every` and `once` functions.
-
-#### Attributes
-
-| Name       | Type   | Description                 |
-| ---------- | ------ | --------------------------- |
-| cancel     | func() | Cancels the task            |
-| is_running | func() | True if the task is running |
-
-
----
-context/examples/sched-module/sched_test.go
----
-package sched
-
-import (
-	"context"
-	"testing"
-	"time"
-
-	"github.com/risor-io/risor/object"
-	"github.com/stretchr/testify/assert"
-)
-
-func TestCron(t *testing.T) {
-	var executed int
-	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
-		executed++
-		return nil, nil
-	}
-	ctx := object.WithCloneCallFunc(context.Background(), callFn)
-	var fn *object.Function
-
-	cronExpr := object.NewString("invalid-cronline")
-	task := Cron(ctx, cronExpr, fn)
-	assert.True(t, object.IsError(task))
-
-	cronExpr = object.NewString("*/1 * * * * *") // Every second
-	task = Cron(ctx, cronExpr, fn)
-	assert.False(t, object.IsError(task))
-	assert.NotNil(t, task)
-	assert.Equal(t, "sched.task", string(task.Type()))
-	assert.Equal(t, 0, executed)
-
-	_, ok := task.GetAttr("is_running")
-	assert.True(t, ok)
-
-	// Wait a second to allow the cron job to execute
-	time.Sleep(1 * time.Second)
-	assert.Equal(t, 1, executed)
-
-	_, ok = task.GetAttr("cancel")
-	assert.True(t, ok)
-}
-
-func TestEvery(t *testing.T) {
-	var executed int
-	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
-		if executed == 2 {
-			return nil, nil
-		}
-		executed++
-		return nil, nil
-	}
-	ctx := object.WithCloneCallFunc(context.Background(), callFn)
-	var fn *object.Function
-
-	// Schedule the function to run every 1 millisecond
-	interval := object.NewString("1ms")
-	task := Every(ctx, interval, fn)
-	assert.False(t, object.IsError(task))
-	assert.Equal(t, "sched.task", string(task.Type()))
-
-	// Wait for a few milliseconds to allow the job to execute
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, 2, executed)
-
-	interval = object.NewString("1foo")
-	task = Every(ctx, interval, fn)
-	assert.True(t, object.IsError(task))
-}
-
-func TestOnce(t *testing.T) {
-	var executed int
-	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
-		executed++
-		return nil, nil
-	}
-	ctx := object.WithCloneCallFunc(context.Background(), callFn)
-	var fn *object.Function
-
-	// Schedule the function to run every 1ms
-	interval := object.NewString("1ms")
-	task := Once(ctx, interval, fn)
-	assert.False(t, object.IsError(task))
-	assert.Equal(t, "sched.task", string(task.Type()))
-
-	// Wait some time for the job to complete
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, 1, executed)
-}
-
-func TestEqual(t *testing.T) {
-	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
-		return nil, nil
-	}
-	ctx := object.WithCloneCallFunc(context.Background(), callFn)
-	var fn *object.Function
-
-	cronExpr := object.NewString("* * * * * *")
-	task := Cron(ctx, cronExpr, fn)
-	task2 := Cron(ctx, cronExpr, fn)
-
-	assert.True(t, task.Equals(task).(*object.Bool).Value())
-	assert.False(t, task.Equals(task2).(*object.Bool).Value())
-}
-
-
----
-context/examples/sched-module/type.go
----
-package sched
-
-import (
-	"context"
-
-	"codnect.io/chrono"
-	"github.com/risor-io/risor/errz"
-	"github.com/risor-io/risor/object"
-	"github.com/risor-io/risor/op"
-)
-
-type task struct {
-	Name string
-	t    chrono.ScheduledTask
-}
-
-// IsTruthy returns true if the task is not cancelled.
-func (t *task) IsTruthy() bool {
-	return !t.t.IsCancelled()
-}
-
-// Cost returns the cost of the task.
-func (t *task) Cost() int {
-	return 0
-}
-
-// Equals returns true if the task is equal to the other object.
-func (t *task) Equals(other object.Object) object.Object {
-	so, ok := other.(*task)
-	if !ok {
-		return object.False
-	}
-	ok = (*t == *so)
-	return object.NewBool(ok)
-}
-
-// Inspect returns the string representation of the task.
-func (t *task) Inspect() string {
-	return "sched.task"
-}
-
-// Type returns the type of the task.
-func (t *task) Type() object.Type {
-	return object.Type("sched.task")
-}
-
-func (t *task) Interface() any {
-	return t.t
-}
-
-// RunOperation returns a type error for unsupported operations.
-func (t *task) RunOperation(opType op.BinaryOpType, right object.Object) object.Object {
-	return object.TypeErrorf("type error: unsupported operation for job: %v", opType)
-}
-
-// GetAttr returns the attribute of the task.
-func (t *task) GetAttr(name string) (object.Object, bool) {
-	switch name {
-	case "cancel":
-		return object.NewBuiltin("sched.task.stop", func(ctx context.Context, args ...object.Object) object.Object {
-			t.t.Cancel()
-			return nil
-		}), true
-	case "is_running":
-		return object.NewBuiltin("sched.task.is_running", func(ctx context.Context, args ...object.Object) object.Object {
-			return object.NewBool(!t.t.IsCancelled())
-		}), true
-	}
-	return nil, false
-}
-
-func (t *task) SetAttr(name string, value object.Object) error {
-	return errz.TypeErrorf("type error: object has no attribute %q", name)
-}
-
-
----
 context/examples/cli-module/app.go
 ---
 package cli
@@ -6230,6 +6309,550 @@ github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 h1:gEOO8jv9F4OT7lGC
 github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1/go.mod h1:Ohn+xnUBiLI6FVj/9LpzZWtj1/D6lUovWYBkxHVV3aM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+
+
+---
+context/examples/sched-module/go.mod
+---
+module github.com/risor-io/risor/modules/sched
+
+go 1.23.0
+
+replace github.com/risor-io/risor => ../..
+
+require (
+	codnect.io/chrono v1.1.3
+	github.com/risor-io/risor v1.7.0
+	github.com/stretchr/testify v1.10.0
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+
+---
+context/examples/sched-module/go.sum
+---
+codnect.io/chrono v1.1.3 h1:24PYU38bQ14hGUBOclYOkTrrSGPaQLEXFoC9etgm6mU=
+codnect.io/chrono v1.1.3/go.mod h1:zmwApcg24IP3E9fgdiupopV1L/QOOtXsqtvivDDaKfk=
+github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
+github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
+github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
+github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
+github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
+github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/rogpeppe/go-internal v1.13.1 h1:KvO1DLK/DRN07sQ1LQKScxyZJuNnedQ5/wKSR38lUII=
+github.com/rogpeppe/go-internal v1.13.1/go.mod h1:uMEvuHeurkdAXX61udpOXGD/AzZDWNMNyH2VO9fmH0o=
+github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.5.2 h1:xuMeJ0Sdp5ZMRXx/aWO6RZxdr3beISkG5/G/aIRr3pY=
+github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
+github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
+github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
+github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
+gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+
+
+---
+context/examples/sched-module/sched.go
+---
+package sched
+
+import (
+	"context"
+	"sync"
+	"time"
+
+	"codnect.io/chrono"
+	"github.com/risor-io/risor/object"
+)
+
+var (
+	// Global scheduler instance
+	scheduler     chrono.TaskScheduler
+	schedulerOnce sync.Once
+	schedulerMu   sync.Mutex
+)
+
+// getScheduler returns the singleton task scheduler instance.
+// It lazily initializes the scheduler on first use.
+func getScheduler() chrono.TaskScheduler {
+	schedulerOnce.Do(func() {
+		scheduler = chrono.NewDefaultTaskScheduler()
+	})
+	return scheduler
+}
+
+// Module returns the sched module.
+func Module() *object.Module {
+	return object.NewBuiltinsModule(
+		"sched", map[string]object.Object{
+			"cron":  object.NewBuiltin("sched.cron", Cron),
+			"every": object.NewBuiltin("sched.every", Every),
+			"once":  object.NewBuiltin("sched.once", Once),
+		},
+	)
+}
+
+// Cron schedules a function to run at a specific time using a cron like expression.
+//
+// The first argument is the cron expression.
+// The second argument is the function to be scheduled.
+func Cron(ctx context.Context, args ...object.Object) object.Object {
+	if len(args) != 2 {
+		return object.Errorf("missing arguments, 2 required")
+	}
+
+	cronLine, err := object.AsString(args[0])
+	if err != nil {
+		return err
+	}
+
+	fn, ok := args[1].(*object.Function)
+	if !ok {
+		return object.Errorf("expected function, got %s", args[1].Type())
+	}
+
+	// GetCloneCallFunc returns a function safe to be called from a different goroutine.
+	cfunc, ok := object.GetCloneCallFunc(ctx)
+	if !ok {
+		return object.EvalErrorf("eval error: context did not contain a call function")
+	}
+
+	schedulerMu.Lock()
+	defer schedulerMu.Unlock()
+
+	taskScheduler := getScheduler()
+	t, nerr := taskScheduler.ScheduleWithCron(func(context.Context) {
+		_, _ = cfunc(ctx, fn, nil)
+	}, cronLine)
+	if nerr != nil {
+		return object.NewError(nerr)
+	}
+
+	return &task{t: t}
+}
+
+// Every schedules a function to run every n seconds.
+//
+// The first argument is the interval in seconds (float).
+// The second argument is the function to be scheduled.
+func Every(ctx context.Context, args ...object.Object) object.Object {
+	if len(args) != 2 {
+		return object.Errorf("missing arguments, 2 required")
+	}
+
+	dur, err := object.AsString(args[0])
+	if err != nil {
+		return err
+	}
+
+	fn, ok := args[1].(*object.Function)
+	if !ok {
+		return object.Errorf("expected function, got %s", args[1].Type())
+	}
+
+	// GetCloneCallFunc returns a function safe to be called from a different goroutine.
+	cfunc, ok := object.GetCloneCallFunc(ctx)
+	if !ok {
+		return object.EvalErrorf("eval error: context did not contain a call function")
+	}
+
+	duration, nerr := time.ParseDuration(dur)
+	if nerr != nil {
+		return object.NewError(nerr)
+	}
+
+	schedulerMu.Lock()
+	defer schedulerMu.Unlock()
+
+	taskScheduler := getScheduler()
+	t, nerr := taskScheduler.ScheduleAtFixedRate(func(context.Context) {
+		_, _ = cfunc(ctx, fn, nil)
+	}, duration)
+	if nerr != nil {
+		return object.NewError(err)
+	}
+
+	return &task{t: t}
+}
+
+// Once schedules a function to run once.
+//
+// The first argument is the interval in seconds (float).
+// The second argument is the function to be scheduled.
+func Once(ctx context.Context, args ...object.Object) object.Object {
+	if len(args) != 2 {
+		return object.Errorf("missing arguments, 2 required")
+	}
+
+	dur, err := object.AsString(args[0])
+	if err != nil {
+		return err
+	}
+
+	duration, nerr := time.ParseDuration(dur)
+	if nerr != nil {
+		return object.NewError(nerr)
+	}
+
+	start := time.Now().Add(duration)
+
+	fn, ok := args[1].(*object.Function)
+	if !ok {
+		return object.Errorf("expected function, got %s", args[1].Type())
+	}
+
+	// GetCloneCallFunc returns a function safe to be called from a different goroutine.
+	cfunc, ok := object.GetCloneCallFunc(ctx)
+	if !ok {
+		return object.EvalErrorf("eval error: context did not contain a call function")
+	}
+
+	schedulerMu.Lock()
+	defer schedulerMu.Unlock()
+
+	taskScheduler := getScheduler()
+	t, nerr := taskScheduler.Schedule(func(ctx context.Context) {
+		_, _ = cfunc(ctx, fn, nil)
+	}, chrono.WithTime(start))
+	if nerr != nil {
+		return object.NewError(err)
+	}
+
+	return &task{t: t}
+}
+
+
+---
+context/examples/sched-module/sched.md
+---
+# sched
+
+The `sched` module exposes a simple interface to schedule tasks, powered by [chrono](https://github.com/codnect/chrono).
+
+```go
+once := sched.once("1s", func(){
+    print("once")
+})
+
+cron := sched.cron("*/1 * * * * *", func(){
+    print("hola")
+})
+
+print(cron.is_running())
+
+every := sched.every("1m", func() {
+    print("every 1 minute")
+})
+
+for {
+    time.sleep(1)
+}
+```
+
+## Functions
+
+Functions are non-blocking and return a `task` object.
+
+### cron
+
+```go filename="Function signature"
+cron(cronline string, fn func)
+```
+
+Creates a new cron job.
+
+The `cronline` string is a space-separated list of 6 fields, representing the time to run the task.
+
+```
+SECOND MINUTE HOUR DAY MONTH DAYOFWEEK
+   *      *     *   *    *      *
+```
+
+Some examples:
+
+- `* * * * * *` every second
+- `*/5 * * * * *` every 5 seconds
+- `0 * * * * *` every minute
+- `0 0 * * * *` every hour
+- `20 45 18 5-20/3 * *` every day at 18:45:20, from the 5th to the 20th of the month, every 3 days
+- `0 0 0 1 SEP *` every year on September 1st at midnight
+- `0 0 0 1 5 SUN` every year on the first Sunday of May at midnight
+
+
+```go copy filename="Example"
+// Run every second
+task := sched.cron("*/1 * * * * *", func() {
+	print("hello world!")
+})
+```
+
+Functions run in a separate goroutine, and errors are ignored, so the main program can continue to run. Make sure to handle errors in your function.
+
+### every
+
+```go filename="Function signature"
+every(duration string, fn func)
+```
+
+Creates a new task that runs regularly, at the specified duration.
+
+The string format is documented in [the standard Go library](https://pkg.go.dev/time#ParseDuration).
+
+```go copy filename="Example"
+// Run every minute
+task := sched.every("1m"", func() {
+	print("hello world!")
+})
+```
+
+### once
+
+```go filename="Function signature"
+once(duration string, fn func)
+```
+
+Creates a new task that runs once, after the specified duration.
+
+```go copy filename="Example"
+// Run a task in one 1h, once
+task := sched.once("1h", func() {
+	print("hello world!")
+})
+```
+
+`cron` can be used to run a task once at a specific time, if more control is needed.
+
+## Types
+
+### task
+
+A Task object returned by `cron`, `every` and `once` functions.
+
+#### Attributes
+
+| Name       | Type   | Description                 |
+| ---------- | ------ | --------------------------- |
+| cancel     | func() | Cancels the task            |
+| is_running | func() | True if the task is running |
+
+
+---
+context/examples/sched-module/sched_test.go
+---
+package sched
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/risor-io/risor/object"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCron(t *testing.T) {
+	var executed int
+	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
+		executed++
+		return nil, nil
+	}
+	ctx := object.WithCloneCallFunc(context.Background(), callFn)
+	var fn *object.Function
+
+	cronExpr := object.NewString("invalid-cronline")
+	task := Cron(ctx, cronExpr, fn)
+	assert.True(t, object.IsError(task))
+
+	cronExpr = object.NewString("*/1 * * * * *") // Every second
+	task = Cron(ctx, cronExpr, fn)
+	assert.False(t, object.IsError(task))
+	assert.NotNil(t, task)
+	assert.Equal(t, "sched.task", string(task.Type()))
+	assert.Equal(t, 0, executed)
+
+	_, ok := task.GetAttr("is_running")
+	assert.True(t, ok)
+
+	// Wait a second to allow the cron job to execute
+	time.Sleep(1 * time.Second)
+	assert.Equal(t, 1, executed)
+
+	_, ok = task.GetAttr("cancel")
+	assert.True(t, ok)
+}
+
+func TestEvery(t *testing.T) {
+	var executed int
+	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
+		if executed == 2 {
+			return nil, nil
+		}
+		executed++
+		return nil, nil
+	}
+	ctx := object.WithCloneCallFunc(context.Background(), callFn)
+	var fn *object.Function
+
+	// Schedule the function to run every 1 millisecond
+	interval := object.NewString("1ms")
+	task := Every(ctx, interval, fn)
+	assert.False(t, object.IsError(task))
+	assert.Equal(t, "sched.task", string(task.Type()))
+
+	// Wait for a few milliseconds to allow the job to execute
+	time.Sleep(50 * time.Millisecond)
+	assert.Equal(t, 2, executed)
+
+	interval = object.NewString("1foo")
+	task = Every(ctx, interval, fn)
+	assert.True(t, object.IsError(task))
+}
+
+func TestOnce(t *testing.T) {
+	var executed int
+	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
+		executed++
+		return nil, nil
+	}
+	ctx := object.WithCloneCallFunc(context.Background(), callFn)
+	var fn *object.Function
+
+	// Schedule the function to run every 1ms
+	interval := object.NewString("1ms")
+	task := Once(ctx, interval, fn)
+	assert.False(t, object.IsError(task))
+	assert.Equal(t, "sched.task", string(task.Type()))
+
+	// Wait some time for the job to complete
+	time.Sleep(50 * time.Millisecond)
+	assert.Equal(t, 1, executed)
+}
+
+func TestEqual(t *testing.T) {
+	callFn := func(ctx context.Context, fn *object.Function, args []object.Object) (object.Object, error) {
+		return nil, nil
+	}
+	ctx := object.WithCloneCallFunc(context.Background(), callFn)
+	var fn *object.Function
+
+	cronExpr := object.NewString("* * * * * *")
+	task := Cron(ctx, cronExpr, fn)
+	task2 := Cron(ctx, cronExpr, fn)
+
+	assert.True(t, task.Equals(task).(*object.Bool).Value())
+	assert.False(t, task.Equals(task2).(*object.Bool).Value())
+}
+
+
+---
+context/examples/sched-module/type.go
+---
+package sched
+
+import (
+	"context"
+
+	"codnect.io/chrono"
+	"github.com/risor-io/risor/errz"
+	"github.com/risor-io/risor/object"
+	"github.com/risor-io/risor/op"
+)
+
+type task struct {
+	Name string
+	t    chrono.ScheduledTask
+}
+
+// IsTruthy returns true if the task is not cancelled.
+func (t *task) IsTruthy() bool {
+	return !t.t.IsCancelled()
+}
+
+// Cost returns the cost of the task.
+func (t *task) Cost() int {
+	return 0
+}
+
+// Equals returns true if the task is equal to the other object.
+func (t *task) Equals(other object.Object) object.Object {
+	so, ok := other.(*task)
+	if !ok {
+		return object.False
+	}
+	ok = (*t == *so)
+	return object.NewBool(ok)
+}
+
+// Inspect returns the string representation of the task.
+func (t *task) Inspect() string {
+	return "sched.task"
+}
+
+// Type returns the type of the task.
+func (t *task) Type() object.Type {
+	return object.Type("sched.task")
+}
+
+func (t *task) Interface() any {
+	return t.t
+}
+
+// RunOperation returns a type error for unsupported operations.
+func (t *task) RunOperation(opType op.BinaryOpType, right object.Object) object.Object {
+	return object.TypeErrorf("type error: unsupported operation for job: %v", opType)
+}
+
+// GetAttr returns the attribute of the task.
+func (t *task) GetAttr(name string) (object.Object, bool) {
+	switch name {
+	case "cancel":
+		return object.NewBuiltin("sched.task.stop", func(ctx context.Context, args ...object.Object) object.Object {
+			t.t.Cancel()
+			return nil
+		}), true
+	case "is_running":
+		return object.NewBuiltin("sched.task.is_running", func(ctx context.Context, args ...object.Object) object.Object {
+			return object.NewBool(!t.t.IsCancelled())
+		}), true
+	}
+	return nil, false
+}
+
+func (t *task) SetAttr(name string, value object.Object) error {
+	return errz.TypeErrorf("type error: object has no attribute %q", name)
+}
+
+
+---
+prompt.md
+---
+# Writing Risor Go modules
+You are a Risor language module author.
+The Risor language syntax is defined in context/context-medium.md.
+Your job is to wrap existing Go modules so they can be used from Risor.
+
+* context/examples/schem-module is an example of a Risor module that wrapps github.com/codnect/chrono.
+* github.com/codnect/chrono original Go source is available in context/examples/chrono-src.
+* context/examples/cli contains an example Risor Go module that wraps github.com/urfave/cli/v2.
+* context/docs/object.go contains interfaces Risor types may need to implement
+
+## Risor API tips when writing modules
+Risor modules have a .md file that documents module usage. Write one every time you wrap a module.
 
 
 ---

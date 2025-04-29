@@ -30,4 +30,4 @@ Wrap only the following types and methods:
 A GPX should also contain a list of tracks. Each track should contain a list of segments and each segment a list of points.
 ```
 
-Claude 3.7 was able to generate a module like https://github.com/rubiojr/gpx-risor, that required only some small tweaks to build and work.
+Claude 3.7 was able to generate a Risor module and documentation like https://github.com/rubiojr/gpx-risor, that required only some small tweaks to build and work.

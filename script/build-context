@@ -1,0 +1,4 @@
+#!/bin/sh
+# pip install files-to-prompt
+
+files-to-prompt context > context.txt
